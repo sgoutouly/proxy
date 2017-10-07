@@ -28,7 +28,7 @@ import lombok.RequiredArgsConstructor;
  * @author sylvain
  */
 @Sharable
-@Component
+//@Component
 @RequiredArgsConstructor(onConstructor = @__(@Autowired))
 public class CacheHandler extends ChannelDuplexHandler {
 	

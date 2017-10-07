@@ -2,21 +2,34 @@ package fr.laposte.disfe.cicsproxy;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
 
-import com.couchbase.client.java.CouchbaseCluster;
-
-import fr.laposte.disfe.cicsproxy.proxy.CommareaProxy;
-import fr.laposte.disfe.cicsproxy.proxy.CacheHandler;
-import fr.laposte.disfe.cicsproxy.proxy.FrontendHandler;
-import fr.laposte.disfe.cicsproxy.proxy.Initializer;
+import rx.Observable;
 
 //@RunWith(SpringRunner.class)
 //@SpringBootTest
 public class CicsProxyApplicationTests {
 
+	@Test
+	public void switchIfEmpty() {
+		
+		System.out.println(
+			Observable.just("1")
+			.map(s -> s + "1")
+			
+			.map(s -> s + "1")
+			.map(s -> s + "1")
+			.flatMap(s -> Observable.<String>empty())
+			.map(s -> Integer.parseInt(s))
+			.switchIfEmpty(Observable.just(1))
+			.toBlocking()
+			.singleOrDefault(null)
+			);
+		
+		
+	}
+	
+	
+	
 	@Test
 	public void proxyShouldStart()  throws InterruptedException {
 		/*new CommareaProxy(
@@ -31,10 +44,10 @@ public class CicsProxyApplicationTests {
 	}
 	
 	
-	@BeforeClass
+/*	@BeforeClass
 	public static void setup() {
 		new Server();
-	}
+	}*/
 	
 	
 

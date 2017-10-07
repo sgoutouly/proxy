@@ -35,10 +35,10 @@
 			<artifactId>java-client</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-all</artifactId>
-			<version>4.1.1.Final</version>
-		</dependency>		
+			<groupId>io.reactivex</groupId>
+			<artifactId>rxnetty-http</artifactId>
+			<version>0.5.2</version>
+		</dependency>	
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
