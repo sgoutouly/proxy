@@ -30,6 +30,7 @@ import org.springframework.stereotype.Component;
 
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.document.JsonDocument;
+import com.couchbase.client.java.document.json.JsonObject;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
@@ -86,8 +87,9 @@ public final class CommareaProxy {
         	.start(serverConn -> {
         		
         		final Observable<ByteBuf> buffy = serverConn.getInput().replayable();
+        		byte[] toto;
         		
-        		return buffy.map(buf -> ByteBufUtil.getBytes(buf))
+        		return buffy.map(buf -> toto = ByteBufUtil.getBytes(buf))
         			.doOnNext(CommareaProxy::safeDump)
         			.map(b -> new String(new Base64().encode(b), CHARSET))
         			.doOnNext(c -> LOG.info("Clé recherchée dans le cache : " + c))
@@ -103,8 +105,23 @@ public final class CommareaProxy {
 								.writeAndFlushOnEach(buffy)
 							  	.cast(ByteBuf.class) 
 							  	.mergeWith(clientConn.getInput()));
-								
 						
+						resp.subscribe( r -> {
+							final byte[] bytes = ByteBufUtil.getBytes(r);
+					    	LOG.info("CtgHandler WRITE EBCDIC : " + new String(bytes, "IBM01147"));
+
+					     	LOG.info("Enregistrement de la réponse en cache ...");
+					    	final String question = new String(new Base64().encode(toto), "UTF-8");
+					    	final String reponse = new String((new Base64()).encode(bytes), "UTF-8");
+					    	this.bucket.insert(JsonDocument.create(question, 
+					    		JsonObject.create()
+					    			.put("question", "")
+					    			.put("response", reponse))
+					    	);
+					    	LOG.info("Enregistrement réussi !");
+						});
+						
+												
 	    				return serverConn.writeAndFlushOnEach(resp);
 					});
         	})
