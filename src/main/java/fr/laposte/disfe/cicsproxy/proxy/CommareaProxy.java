@@ -71,30 +71,35 @@ public final class CommareaProxy {
         		
         		return stream.flatMap(buf -> { 
     				String question64 =  new String(new Base64().encode(ByteBufUtil.getBytes(buf)), CHARSET);
-    				JsonDocument doc = this.bucket.get(question64);
-    				if (doc == null) {
-    					LOG.info(" => Appel du serveur distant ..");
-    					Observable<ByteBuf> resp = TcpClient.newClient(remoteHost, remotePort)
-    							.createConnectionRequest()
-    							.flatMap(clientConn -> clientConn.writeAndFlushOnEach(stream)
-    								.cast(ByteBuf.class) 
-    								.mergeWith(clientConn.getInput()))
-    								.map(r -> save(buf, r));
-    					
-        				return serverConn.writeAndFlushOnEach(resp);	
-    				}
-    				else {
-    					LOG.info(" => Utilisation du cache ...");
-    					byte[] reponse = new Base64().decode(doc.content().getString("response"));
-    					ByteBuf reponseBB = Unpooled.copiedBuffer(reponse);
-    					return serverConn.writeAndFlushOnEach(Observable.just(reponseBB));
-    				}
+    				return this.bucket.async()
+    					.get(question64)
+    					.switchIfEmpty(Observable.error(new RuntimeException("Cache vide !")))
+    					.onErrorResumeNext(e -> {
+    						LOG.info(" => Appel du serveur distant ..");
+        					Observable<ByteBuf> resp = TcpClient.newClient(remoteHost, remotePort)
+        							.createConnectionRequest()
+        							.flatMap(clientConn -> clientConn.writeAndFlushOnEach(stream)
+        								.cast(ByteBuf.class) 
+        								.mergeWith(clientConn.getInput()))
+        								.map(r -> save(buf, r));
+        					
+            				return serverConn.writeAndFlushOnEach(resp)
+            						.cast(JsonDocument.class);
+    					})
+    					.flatMap(doc -> {
+    						LOG.info(" => Utilisation du cache ...");
+        					byte[] reponse = new Base64().decode(doc.content().getString("reponse"));
+        					ByteBuf reponseBB = Unpooled.copiedBuffer(reponse);
+        					return serverConn.writeAndFlushOnEach(Observable.just(reponseBB));
+    					});
+    				});
     				
-        		});
+        		//});
         	})
         .awaitShutdown();
 
 	}
+	
 	
 	public ByteBuf save(ByteBuf q, ByteBuf r) {
 		try {
