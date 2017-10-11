@@ -73,9 +73,8 @@ public final class CommareaProxy {
         	.start(serverConn -> {
         		
         		final Observable<ByteBuf> buffy = serverConn.getInput().replayable();
-        		byte[] toto;
         		
-        		return buffy.map(buf -> toto = ByteBufUtil.getBytes(buf))
+        		return buffy.map(buf -> ByteBufUtil.getBytes(buf))
         			.doOnNext(CommareaProxy::safeDump)
         			.map(b -> new String(new Base64().encode(b), CHARSET))
         			.doOnNext(c -> LOG.info("Clé recherchée dans le cache : " + c))
@@ -84,36 +83,41 @@ public final class CommareaProxy {
 	    			.map(response -> new Base64().decode(response))
 	    			.map(b -> Unpooled.copiedBuffer(b))
 	    			.flatMap(b -> serverConn.writeAndFlushOnEach(Observable.just(b)))
+	    			
 					.onErrorResumeNext(a -> {
 						LOG.info(a.getMessage() + " => Appel du serveur distant ..");
-						
 						Observable<ByteBuf> resp = connReq.flatMap(clientConn -> clientConn
 								.writeAndFlushOnEach(buffy)
 							  	.cast(ByteBuf.class) 
-							  	.mergeWith(clientConn.getInput()));
+							  	.mergeWith(clientConn.getInput()))
+								//.map(r -> save(buffy, r))
+								;
 						
-						resp.subscribe( r -> {
-							final byte[] bytes = ByteBufUtil.getBytes(r);
-					    	LOG.info("CtgHandler WRITE EBCDIC : " + new String(bytes, "IBM01147"));
-
-					     	LOG.info("Enregistrement de la réponse en cache ...");
-					    	final String question = new String(new Base64().encode(toto), "UTF-8");
-					    	final String reponse = new String((new Base64()).encode(bytes), "UTF-8");
-					    	this.bucket.insert(JsonDocument.create(question, 
-					    		JsonObject.create()
-					    			.put("question", "")
-					    			.put("response", reponse))
-					    	);
-					    	LOG.info("Enregistrement réussi !");
-						});
-						
-												
 	    				return serverConn.writeAndFlushOnEach(resp);
 					});
         	})
         .awaitShutdown();
 
 	}
+	
+	public Observable<ByteBuf> save(ByteBuf q, ByteBuf r) {
+		try {
+     	LOG.info("Enregistrement de la réponse en cache ...");
+    	final String question = new String(new Base64().encode(ByteBufUtil.getBytes(q)), "UTF-8");
+    	final String reponse = new String((new Base64()).encode(ByteBufUtil.getBytes(r)), "UTF-8");
+    	this.bucket.insert(JsonDocument.create(question, 
+    		JsonObject.create()
+    			.put("question", question)
+    			.put("response", reponse))
+    	);
+    	LOG.info("Enregistrement réussi !");	
+    	return Observable.just(r);
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+	
 	
 	private static void safeDump(byte[] b) {
 		try {
