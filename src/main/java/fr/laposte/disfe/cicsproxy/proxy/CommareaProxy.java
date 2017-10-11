@@ -27,7 +27,6 @@ import io.reactivex.netty.protocol.tcp.client.TcpClient;
 import io.reactivex.netty.protocol.tcp.server.TcpServer;
 import lombok.RequiredArgsConstructor;
 import rx.Observable;
-import rx.schedulers.Schedulers;
 
 /**
  * 
@@ -72,46 +71,49 @@ public final class CommareaProxy {
         	.enableWireLogging("proxy-server", LogLevel.DEBUG)
         	.start(serverConn -> {
         		
-        		final Observable<ByteBuf> buffy = serverConn.getInput().replayable();
+        		final Observable<ByteBuf> stream = serverConn.getInput().replayable();
         		
-        		return buffy.map(buf -> ByteBufUtil.getBytes(buf))
-        			.doOnNext(CommareaProxy::safeDump)
-        			.map(b -> new String(new Base64().encode(b), CHARSET))
-        			.doOnNext(c -> LOG.info("Clé recherchée dans le cache : " + c))
-        			.map(question64 -> this.bucket.get(question64))
-	    			.map(d -> d.content().getString("response"))
-	    			.map(response -> new Base64().decode(response))
-	    			.map(b -> Unpooled.copiedBuffer(b))
-	    			.flatMap(b -> serverConn.writeAndFlushOnEach(Observable.just(b)))
-	    			
-					.onErrorResumeNext(a -> {
-						LOG.info(a.getMessage() + " => Appel du serveur distant ..");
-						Observable<ByteBuf> resp = connReq.flatMap(clientConn -> clientConn
-								.writeAndFlushOnEach(buffy)
-							  	.cast(ByteBuf.class) 
-							  	.mergeWith(clientConn.getInput()))
-								//.map(r -> save(buffy, r))
-								;
-						
-	    				return serverConn.writeAndFlushOnEach(resp);
-					});
+        		return stream.flatMap(buf -> { 
+    				byte[] bytes = ByteBufUtil.getBytes(buf);
+    				String question64 =  new String(new Base64().encode(bytes), CHARSET);
+    				JsonDocument doc = this.bucket.get(question64);
+    				if (doc == null) {
+    					LOG.info(" => Appel du serveur distant ..");
+    					Observable<ByteBuf> resp = connReq.flatMap(clientConn -> clientConn
+    							.writeAndFlushOnEach(stream)
+    						  	.cast(ByteBuf.class) 
+    						  	.mergeWith(clientConn.getInput()))
+    							.map(r -> save(buf, r));
+    					
+        				return serverConn.writeAndFlushOnEach(resp);	
+    				}
+    				else {
+    					LOG.info(" => Utilisation du cache ...");
+    					String reponse64 = doc.content().getString("response");
+    					byte[] reponseB = new Base64().decode(reponse64);
+    					ByteBuf reponseBB = Unpooled.copiedBuffer(reponseB);
+    					return serverConn.writeAndFlushOnEach(Observable.just(reponseBB));
+    				}
+    				
+        		});
         	})
         .awaitShutdown();
 
 	}
 	
-	public Observable<ByteBuf> save(ByteBuf q, ByteBuf r) {
+	public ByteBuf save(ByteBuf q, ByteBuf r) {
 		try {
-     	LOG.info("Enregistrement de la réponse en cache ...");
-    	final String question = new String(new Base64().encode(ByteBufUtil.getBytes(q)), "UTF-8");
-    	final String reponse = new String((new Base64()).encode(ByteBufUtil.getBytes(r)), "UTF-8");
-    	this.bucket.insert(JsonDocument.create(question, 
-    		JsonObject.create()
-    			.put("question", question)
-    			.put("response", reponse))
-    	);
-    	LOG.info("Enregistrement réussi !");	
-    	return Observable.just(r);
+	     	LOG.info("Enregistrement de la réponse en cache ...");
+	    	final String question = new String(new Base64().encode(ByteBufUtil.getBytes(q)), "UTF-8");
+	    	final String reponse = new String((new Base64()).encode(ByteBufUtil.getBytes(r)), "UTF-8");
+	    	this.bucket.insert(JsonDocument.create(question, 
+	    		JsonObject.create()
+	    			.put("question", question)
+	    			.put("response", reponse))
+	    	);
+	    	LOG.info("Enregistrement réussi !");
+	    	
+	    	return r;
 		}
 		catch (Exception e) {
 			throw new RuntimeException(e);
