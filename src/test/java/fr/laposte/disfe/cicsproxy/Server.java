@@ -53,7 +53,6 @@ public class Server {
 								public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
 									log.info("Connexion acceptée !");
 								}
-
 								@Override
 								public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 									log.info("Réception d'un message :" + msg.toString());

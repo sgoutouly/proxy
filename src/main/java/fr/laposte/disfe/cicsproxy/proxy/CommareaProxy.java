@@ -36,6 +36,8 @@ import rx.Observable;
 @RequiredArgsConstructor(onConstructor = @__(@Autowired))
 public final class CommareaProxy {
 
+	
+
 	private static final Logger LOG = LoggerFactory.getLogger(CommareaProxy.class);
 	
 	@Value("${proxy.local.port}")
@@ -45,13 +47,13 @@ public final class CommareaProxy {
 	@Value("${proxy.remote.port}")
     private int remotePort;
 	
-	/** Modes de foncitonnement */
+	/** Modes de fonctionnement */
 	private enum ProxyMode { IDLE, RECORD, REPLAY, RECORD_IF_EMPTY }
+	
 	/** Charset de travail */
 	public static final Charset CHARSET = Charset.forName("UTF-8");
+	public static final Charset CICS_CHARSET = Charset.forName("IBM01147");
 	
-	/** Liste des arguments passsés à l'application au démarrage */
-	private final ApplicationArguments args;
 	/** Bucket couchbase injecté par Spring Boot */
 	private final Bucket bucket;
 	
@@ -59,12 +61,6 @@ public final class CommareaProxy {
 	public void start() {
 
 		LOG.info("CICS Proxying *:" + LOCAL_PORT + " ...");
-
-        /* Start a TCP client pointing to remote server. */
-        final TcpClient<ByteBuf, ByteBuf> targetClient = TcpClient.newClient(remoteHost, remotePort);
-        
-        /* Create a new connection request, each subscription to which creates a new connection.*/
-        ConnectionRequest<ByteBuf, ByteBuf> connReq = targetClient.createConnectionRequest();
 
         /* Starts a new HTTP server on an ephemeral port which acts as a proxy to the target server started above.*/
         TcpServer.newServer(LOCAL_PORT)
@@ -74,24 +70,23 @@ public final class CommareaProxy {
         		final Observable<ByteBuf> stream = serverConn.getInput().replayable();
         		
         		return stream.flatMap(buf -> { 
-    				byte[] bytes = ByteBufUtil.getBytes(buf);
-    				String question64 =  new String(new Base64().encode(bytes), CHARSET);
+    				String question64 =  new String(new Base64().encode(ByteBufUtil.getBytes(buf)), CHARSET);
     				JsonDocument doc = this.bucket.get(question64);
     				if (doc == null) {
     					LOG.info(" => Appel du serveur distant ..");
-    					Observable<ByteBuf> resp = connReq.flatMap(clientConn -> clientConn
-    							.writeAndFlushOnEach(stream)
-    						  	.cast(ByteBuf.class) 
-    						  	.mergeWith(clientConn.getInput()))
-    							.map(r -> save(buf, r));
+    					Observable<ByteBuf> resp = TcpClient.newClient(remoteHost, remotePort)
+    							.createConnectionRequest()
+    							.flatMap(clientConn -> clientConn.writeAndFlushOnEach(stream)
+    								.cast(ByteBuf.class) 
+    								.mergeWith(clientConn.getInput()))
+    								.map(r -> save(buf, r));
     					
         				return serverConn.writeAndFlushOnEach(resp);	
     				}
     				else {
     					LOG.info(" => Utilisation du cache ...");
-    					String reponse64 = doc.content().getString("response");
-    					byte[] reponseB = new Base64().decode(reponse64);
-    					ByteBuf reponseBB = Unpooled.copiedBuffer(reponseB);
+    					byte[] reponse = new Base64().decode(doc.content().getString("response"));
+    					ByteBuf reponseBB = Unpooled.copiedBuffer(reponse);
     					return serverConn.writeAndFlushOnEach(Observable.just(reponseBB));
     				}
     				
@@ -104,12 +99,14 @@ public final class CommareaProxy {
 	public ByteBuf save(ByteBuf q, ByteBuf r) {
 		try {
 	     	LOG.info("Enregistrement de la réponse en cache ...");
-	    	final String question = new String(new Base64().encode(ByteBufUtil.getBytes(q)), "UTF-8");
-	    	final String reponse = new String((new Base64()).encode(ByteBufUtil.getBytes(r)), "UTF-8");
+	    	
+	     	final String question = new String(new Base64().encode(ByteBufUtil.getBytes(q)), CHARSET);
 	    	this.bucket.insert(JsonDocument.create(question, 
 	    		JsonObject.create()
+	    			.put("questionDecoded", new String(ByteBufUtil.getBytes(q), CICS_CHARSET))
 	    			.put("question", question)
-	    			.put("response", reponse))
+	    			.put("reponseDecoded", new String(ByteBufUtil.getBytes(r), CICS_CHARSET))
+	    			.put("reponse", new String((new Base64()).encode(ByteBufUtil.getBytes(r)), CHARSET)))
 	    	);
 	    	LOG.info("Enregistrement réussi !");
 	    	
@@ -122,10 +119,7 @@ public final class CommareaProxy {
 	
 	
 	private static void safeDump(byte[] b) {
-		try {
-			LOG.info(new String(b, "IBM01147"));
-		} 
-		catch (UnsupportedEncodingException e) {}
+		LOG.info(new String(b, CICS_CHARSET));
 	}
 	
 }
