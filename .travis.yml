@@ -1,1 +1,8 @@
 language: java
+
+addons:
+  sonarcloud:
+    organization: "sgoutouly-github"
+
+script:
+  - sonar-scanner
