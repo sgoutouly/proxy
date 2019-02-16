@@ -9,7 +9,7 @@ import static org.junit.Assert.assertTrue;
  * Empty
  * 16 Feb 2019
  */
-public class Empty {
+public class EmptyTest {
 
 	@Test
 	public void should() {
