@@ -20,6 +20,7 @@ import rx.Observable;
 
 import javax.annotation.PostConstruct;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 @Component
@@ -27,7 +28,7 @@ import java.util.Base64;
 public final class Engine {
 
 	private static final Logger LOG = LoggerFactory.getLogger(Engine.class);
-	private static final Charset CHARSET = Charset.forName("UTF-8");
+	private static final Charset CHARSET = StandardCharsets.UTF_8;
 	private static final Charset CICS_CHARSET = Charset.forName("IBM01147");
 	
 	@Value("${proxy.local.port}")
