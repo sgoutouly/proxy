@@ -1,4 +1,4 @@
-package fr.laposte.disfe.cicsproxy;
+package io.commare.recorder;
 
 import java.nio.charset.Charset;
 

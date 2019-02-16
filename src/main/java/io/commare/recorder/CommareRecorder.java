@@ -1,13 +1,13 @@
-package fr.laposte.disfe.cicsproxy;
+package io.commare.recorder;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class CicsProxyApplication {
+public class CommareRecorder {
 
 	public static void main(String[] args) {
-		SpringApplication.run(CicsProxyApplication.class, args);
+		SpringApplication.run(CommareRecorder.class, args);
 	}
 	
 	

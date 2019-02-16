@@ -1,5 +1,5 @@
 
-package fr.laposte.disfe.cicsproxy.proxy;
+package io.commare.recorder.proxy;
 
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.document.JsonDocument;
@@ -24,9 +24,9 @@ import java.nio.charset.Charset;
 
 @Component
 @RequiredArgsConstructor(onConstructor = @__(@Autowired))
-public final class CommareaProxy {
+public final class Engine {
 
-	private static final Logger LOG = LoggerFactory.getLogger(CommareaProxy.class);
+	private static final Logger LOG = LoggerFactory.getLogger(Engine.class);
 	private static final Charset CHARSET = Charset.forName("UTF-8");
 	private static final Charset CICS_CHARSET = Charset.forName("IBM01147");
 	
