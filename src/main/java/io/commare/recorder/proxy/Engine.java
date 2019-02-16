@@ -11,7 +11,6 @@ import io.netty.handler.logging.LogLevel;
 import io.reactivex.netty.protocol.tcp.client.TcpClient;
 import io.reactivex.netty.protocol.tcp.server.TcpServer;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +20,7 @@ import rx.Observable;
 
 import javax.annotation.PostConstruct;
 import java.nio.charset.Charset;
+import java.util.Base64;
 
 @Component
 @RequiredArgsConstructor(onConstructor = @__(@Autowired))
@@ -57,7 +57,7 @@ public final class Engine {
 									.cast(JsonDocument.class)) // Ceci permet de faire passer ce bloc pour un JsonDocument
 	    					.flatMap(doc -> {
 	    						LOG.info(" => Utilisation du cache ...");
-	        					final byte[] reponse = new Base64().decode(doc.content().getString("reponse"));
+	        					final byte[] reponse = Base64.getDecoder().decode(doc.content().getString("reponse"));
 	        					return serverConn.writeAndFlushOnEach(Observable.just(Unpooled.copiedBuffer(reponse)));
 	    					}))
         	).awaitShutdown();
@@ -104,7 +104,7 @@ public final class Engine {
 	}
 	
 	private String toBase64(final ByteBuf buf) {
-		return new String(new Base64().encode(ByteBufUtil.getBytes(buf)), CHARSET);
+		return new String(Base64.getEncoder().encode(ByteBufUtil.getBytes(buf)), CHARSET);
 	}
 	
 }
