@@ -32,15 +32,15 @@ public final class Engine {
 	private static final Charset CICS_CHARSET = Charset.forName("IBM01147");
 	
 	@Value("${proxy.local.port}")
-	private int localPort;
+	private final int localPort;
 	@Value("${proxy.remote.host}")
-    private String remoteHost;
+    private final String remoteHost;
 	@Value("${proxy.remote.port}")
-    private int remotePort;
+    private final int remotePort;
 
 	/** Bucket couchbase injecté par Spring Boot */
 	private final Bucket bucket;
-	
+
 	@PostConstruct
 	public void start() {
 
@@ -83,7 +83,7 @@ public final class Engine {
 	 * @param r
 	 * @return
 	 */
-	public ByteBuf saveExchange(ByteBuf q, ByteBuf r) {
+	 ByteBuf saveExchange(ByteBuf q, ByteBuf r) {
 		LOG.info("Enregistrement de la réponse en cache ...");
 
 		final String question = toBase64(q);
@@ -100,11 +100,11 @@ public final class Engine {
 		return r;
 	}
 	
-	private String decodeCics(final ByteBuf buf) {
+	String decodeCics(final ByteBuf buf) {
 		return new String(ByteBufUtil.getBytes(buf), CICS_CHARSET);
 	}
 	
-	private String toBase64(final ByteBuf buf) {
+	String toBase64(final ByteBuf buf) {
 		return new String(Base64.getEncoder().encode(ByteBufUtil.getBytes(buf)), CHARSET);
 	}
 	

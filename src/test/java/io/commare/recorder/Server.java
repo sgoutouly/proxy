@@ -26,12 +26,15 @@ public class Server {
 	public static void main(String[] args) {
 		new Server();
 	}
-	
-	Server() {
+
+	ChannelFuture future = null;
+
+	NioEventLoopGroup workGroup = new NioEventLoopGroup(8);
+	NioEventLoopGroup bossGroup = new NioEventLoopGroup();
+
+	public Server() {
 		int port = 3000;
 
-		NioEventLoopGroup workGroup = new NioEventLoopGroup(8);
-		NioEventLoopGroup bossGroup = new NioEventLoopGroup();
 
 		try {
 			final ServerBootstrap bootstrap = new ServerBootstrap()
@@ -59,7 +62,7 @@ public class Server {
 					}
 				});
 
-			final ChannelFuture future = bootstrap.bind(port).sync();
+			future = bootstrap.bind(port).sync();
 
 			LOG.info("Server start at port : " + port);
 			future.channel().closeFuture().sync();
@@ -72,5 +75,13 @@ public class Server {
 			workGroup.shutdownGracefully();
 		}
 	}
+
+	public void close() throws InterruptedException {
+		future.channel().closeFuture().sync();
+		bossGroup.shutdownGracefully();
+		workGroup.shutdownGracefully();
+	}
+
+
 
 }
