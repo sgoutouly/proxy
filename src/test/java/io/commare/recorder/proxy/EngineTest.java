@@ -23,7 +23,7 @@ public class EngineTest {
             .toBlocking()
             .singleOrDefault(null);
 
-        Assert.assertEquals("From proxy:" + commarea, response);
+        Assert.assertEquals(commarea, response);
     }
 
 
@@ -32,8 +32,7 @@ public class EngineTest {
     @Before
     public void setUp() {
         this.server = TcpServer.newServer(3000)
-            .start(serverConn -> serverConn.writeAndFlushOnEach(
-                Observable.just(Utils.encodeCics("From proxy:")).mergeWith(serverConn.getInput())));
+            .start(serverConn -> serverConn.writeAndFlushOnEach(serverConn.getInput()));
     }
 
     @After
