@@ -6,13 +6,12 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import rx.Observable;
 
 
 public class EngineTest {
 
     @Test
-    public void shouldForwardToServer() throws InterruptedException {
+    public void shouldForwardToServer() {
         final String commarea = "commarea";
         final ByteBuf b = Utils.encodeCics(commarea);
 
