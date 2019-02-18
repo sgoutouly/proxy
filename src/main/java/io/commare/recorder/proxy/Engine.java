@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 import rx.Observable;
 
 import javax.annotation.PostConstruct;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -69,13 +70,14 @@ public final class Engine {
 	 * @param q
 	 * @return Observable<Void>
 	 */
-	Observable<ByteBuf> forward(ByteBuf q) {
-		LOG.info(" => Appel du serveur distant ..");
+	Observable<ByteBuf> forward(ByteBuf q)  {
+		LOG.info(" => Appel du serveur distant {}:{} ...", this.remoteHost, this.remotePort);
 		return TcpClient.newClient(this.remoteHost, this.remotePort)
 			.createConnectionRequest()
 			.flatMap(clientConn -> clientConn.writeAndFlushOnEach(Observable.just(q))
-				.cast(ByteBuf.class) 
+				.cast(ByteBuf.class)
 				.mergeWith(clientConn.getInput()));
+
 	}
 	
 	/**

@@ -32,20 +32,6 @@ public class EngineTest {
 		Assert.assertEquals(Base64.getEncoder().encodeToString(data), new Engine(2000, "localhost", 3000, null).toBase64(b));
 	}
 
-	@Test
-	public void shouldForwardToServer() throws InterruptedException {
-
-		byte[] data = "commarea".getBytes(Charset.forName("IBM01147"));
-		ByteBuf b = Unpooled.copiedBuffer(data);
-
-		Observable<ByteBuf> bb = new Engine(2000, "localhost", 3000, null).forward(b);
-
-		ByteBuf toto = bb.toBlocking().singleOrDefault(null);
-		System.out.println(ByteBufUtil.getBytes(toto));
-
-		System.out.println("couco");
-
-	}
 
 
 }
