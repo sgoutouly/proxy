@@ -1,37 +1,45 @@
 package io.commare.recorder.proxy;
 
-import io.commare.recorder.Server;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufUtil;
-import io.netty.buffer.Unpooled;
+import io.reactivex.netty.protocol.tcp.server.TcpServer;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import rx.Observable;
 
-import java.nio.charset.Charset;
-import java.util.Base64;
 
-/**
- * EngineTest
- * 18 Feb 2019
- */
 public class EngineTest {
 
-	@Test
-	public void shouldDecodeCics() {
-		String commarea = "commarea";
-		byte[] data = commarea.getBytes(Charset.forName("IBM01147"));
-		ByteBuf b = Unpooled.copiedBuffer(data);
-		Assert.assertEquals(commarea, new Engine(2000, "localhost", 3000, null).decodeCics(b));
-	}
+    @Test
+    public void shouldForwardToServer() throws InterruptedException {
+        final String commarea = "commarea";
+        final ByteBuf b = Utils.encodeCics(commarea);
 
-	@Test
-	public void shouldConvertBufToBase64() {
-		byte[] data = "commarea".getBytes(Charset.forName("IBM01147"));
-		ByteBuf b = Unpooled.copiedBuffer(data);
-		Assert.assertEquals(Base64.getEncoder().encodeToString(data), new Engine(2000, "localhost", 3000, null).toBase64(b));
-	}
+        String response = new Engine(2000, "localhost", 3000, null)
+            .forward(b)
+            .take(1) // nedd that to free the buffer and the thread
+            .map(Utils::decodeCics)
+            .toBlocking()
+            .singleOrDefault(null);
+
+        Assert.assertEquals("From proxy:" + commarea, response);
+    }
 
 
+    private TcpServer<ByteBuf, ByteBuf> server;
+
+    @Before
+    public void setUp() {
+        this.server = TcpServer.newServer(3000)
+            .start(serverConn -> serverConn.writeAndFlushOnEach(
+                Observable.just(Utils.encodeCics("From proxy:")).mergeWith(serverConn.getInput())));
+    }
+
+    @After
+    public void tearDown() {
+        server.shutdown();
+        server.awaitShutdown();
+    }
 
 }
