@@ -54,15 +54,16 @@ public final class Engine {
                 .replayable()
                 .flatMap(question -> this.bucket.async()
                     .get(toBase64(question))
-                    .switchIfEmpty(forward(question)
-                        .map(reponse -> saveExchange(question, reponse))
-                        .flatMap(remoteResponse -> serverConn.writeAndFlushOnEach(Observable.just(remoteResponse)))
-                        .cast(JsonDocument.class)) // Ceci permet de faire passer ce bloc pour un JsonDocument
-                    .flatMap(doc -> {
+                    .map(doc -> {
                         LOG.info(" => Utilisation du cache ...");
-                        final byte[] reponse = Base64.getDecoder().decode(doc.content().getString("reponse"));
-                        return serverConn.writeAndFlushOnEach(Observable.just(Unpooled.copiedBuffer(reponse)));
-                    }))
+                        final String responseB64 = doc.content().getString("reponse");
+                        return Unpooled.copiedBuffer(Base64.getDecoder().decode(responseB64));
+                    })
+                    .switchIfEmpty(forward(question)
+                        .map(response -> saveExchange(question, response))
+                    )
+                    .flatMap(response -> serverConn.writeAndFlushOnEach(Observable.just(response)))
+                )
             ).awaitShutdown();
     }
 
@@ -86,7 +87,7 @@ public final class Engine {
      * @param r
      * @return
      */
-    public ByteBuf saveExchange(ByteBuf q, ByteBuf r) {
+    ByteBuf saveExchange(ByteBuf q, ByteBuf r) {
         LOG.info("Enregistrement de la réponse en cache ...");
 
         final String question = toBase64(q);
